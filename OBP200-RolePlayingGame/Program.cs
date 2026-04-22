@@ -10,6 +10,7 @@ class Program
     // Spelarens "databas": alla värden som strängar
     // index: 0 Name, 1 Class, 2 HP, 3 MaxHP, 4 ATK, 5 DEF, 6 GOLD, 7 XP, 8 LEVEL, 9 POTIONS, 10 INVENTORY (semicolon-sep)
     static string[] Player = new string[11];
+    static Player? CurrentPlayer; //varaibel 
 
     // Rum: [type, label]
     // types: battle, treasure, shop, rest, boss
@@ -98,7 +99,13 @@ class Program
                 maxhp = 40; hp = 40; atk = 7; def = 5; potions = 2; gold = 15;
                 break;
         }
-
+        CurrentPlayer = new Player(name, hp, atk, def, cls) // Skapar ett Player-objekt och sparar det i CurrentPlayer
+        {
+            Gold = gold, 
+            Level = 1, 
+            Potions = potions
+        };
+        
         // Fyll player-array
         Player[0] = name;
         Player[1] = cls;
@@ -410,6 +417,11 @@ class Program
 
     static void ApplyDamageToPlayer(int dmg)
     {
+        if (CurrentPlayer != null) //Uppdaterar spelarens hälsa via Player-objektet
+        {
+            CurrentPlayer.Health = Math.Max(0, CurrentPlayer.Health - dmg);
+        }
+        
         int hp = ParseInt(Player[2], 0);
         hp -= Math.Max(0, dmg);
         Player[2] = Math.Max(0, hp).ToString();
@@ -452,6 +464,12 @@ class Program
 
     static void AddPlayerXp(int amount)
     {
+        
+        if (CurrentPlayer != null) // Uppdaterar spelarens XP via Player-objektet
+        {
+            CurrentPlayer.Experience += amount;
+        }
+        
         int xp = ParseInt(Player[7], 0) + Math.Max(0, amount);
         Player[7] = xp.ToString();
         MaybeLevelUp();
@@ -459,6 +477,11 @@ class Program
 
     static void AddPlayerGold(int amount)
     {
+        if (CurrentPlayer != null) // Uppdaterar spelarens guld via Player-objektet
+        {
+            CurrentPlayer.Gold += amount;
+        }
+        
         int gold = ParseInt(Player[6], 0) + Math.Max(0, amount);
         Player[6] = gold.ToString();
     }
@@ -638,6 +661,10 @@ class Program
 
     static void ShowStatus()
     {
+        if (CurrentPlayer != null) //// Uppdaterar spelarens hälsa via Player-objektet
+        {
+            Console.WriteLine($"[{CurrentPlayer.Name} | {CurrentPlayer.ClassType}] HP {CurrentPlayer.Health} ATK {CurrentPlayer.Attack} DEF {CurrentPlayer.Defense} Guld {CurrentPlayer.Gold}");
+        }
         Console.WriteLine($"[{Player[0]} | {Player[1]}]  HP {Player[2]}/{Player[3]}  ATK {Player[4]}  DEF {Player[5]}  LVL {Player[8]}  XP {Player[7]}  Guld {Player[6]}  Drycker {Player[9]}");
         var inv = (Player[10] ?? "");
         if (!string.IsNullOrWhiteSpace(inv))
