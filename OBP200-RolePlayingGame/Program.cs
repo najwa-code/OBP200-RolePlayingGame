@@ -99,11 +99,13 @@ class Program
                 maxhp = 40; hp = 40; atk = 7; def = 5; potions = 2; gold = 15;
                 break;
         }
-        CurrentPlayer = new Player(name, hp, atk, def, cls) // Skapar ett Player-objekt och sparar det i CurrentPlayer
+        CurrentPlayer = new Player(name, hp, atk, def, cls) // Skapar Player som objekt
         {
             Gold = gold, 
             Level = 1, 
-            Potions = potions
+            Potions = potions,
+            Experience = 0,
+            MaxHealth = maxhp
         };
         
         // Fyll player-array
@@ -316,8 +318,10 @@ class Program
 
     static int CalculatePlayerDamage(int enemyDef)
     {
-        int atk = ParseInt(Player[4], 5);
-        string cls = Player[1] ?? "Warrior";
+        if (CurrentPlayer == null) return 0;
+
+        int atk = CurrentPlayer.Attack;
+        string cls = CurrentPlayer.ClassType;
 
         // Beräkna grundskada
         int baseDmg = Math.Max(1, atk - (enemyDef / 2));
@@ -334,9 +338,6 @@ class Program
             case "Rogue":
                 baseDmg += (Rng.NextDouble() < 0.2) ? 4 : 0; // rogue crit-chans
                 break;
-            default:
-                baseDmg += 0;
-                break;
         }
 
         return Math.Max(1, baseDmg + roll);
@@ -344,7 +345,9 @@ class Program
 
     static int UseClassSpecial(int enemyDef, bool vsBoss)
     {
-        string cls = Player[1] ?? "Warrior";
+        if (CurrentPlayer == null) return 0;
+        
+        string cls = CurrentPlayer.ClassType;
         int specialDmg = 0;
 
         // Hantering av specialförmågor
@@ -352,19 +355,19 @@ class Program
         {
             // Heavy Strike: hög skada men självskada
             Console.WriteLine("Warrior använder Heavy Strike!");
-            int atk = ParseInt(Player[4], 5);
+            int atk = CurrentPlayer.Attack;
             specialDmg = Math.Max(2, atk + 3 - enemyDef);
             ApplyDamageToPlayer(2); // självskada
         }
         else if (cls == "Mage")
         {
             // Fireball: stor skada, kostar guld
-            int gold = ParseInt(Player[6], 0);
+            int gold = CurrentPlayer.Gold;
             if (gold >= 3)
             {
                 Console.WriteLine("Mage kastar Fireball!");
-                Player[6] = (gold - 3).ToString();
-                int atk = ParseInt(Player[4], 5);
+                CurrentPlayer.Gold -= 3;
+                int atk = CurrentPlayer.Attack;
                 specialDmg = Math.Max(3, atk + 5 - (enemyDef / 2));
             }
             else
@@ -379,7 +382,7 @@ class Program
             if (Rng.NextDouble() < 0.5)
             {
                 Console.WriteLine("Rogue utför en lyckad Backstab!");
-                int atk = ParseInt(Player[4], 5);
+                int atk = CurrentPlayer.Attack;
                 specialDmg = Math.Max(4, atk + 6);
             }
             else
@@ -388,11 +391,6 @@ class Program
                 specialDmg = 1;
             }
         }
-        else
-        {
-            specialDmg = 0;
-        }
-
         // Dämpa skada mot bossen
         if (vsBoss)
         {
@@ -404,7 +402,8 @@ class Program
 
     static int CalculateEnemyDamage(int enemyAtk)
     {
-        int def = ParseInt(Player[5], 0);
+        if (CurrentPlayer == null) return 0;
+        int def = CurrentPlayer.Defense;
         int roll = Rng.Next(0, 3);
 
         int dmg = Math.Max(1, enemyAtk - (def / 2)) + roll;
@@ -417,40 +416,39 @@ class Program
 
     static void ApplyDamageToPlayer(int dmg)
     {
-        if (CurrentPlayer != null) //Uppdaterar spelarens hälsa via Player-objektet
-        {
+        if (CurrentPlayer == null) return; 
+            //Uppdaterar spelarens hälsa via Player-objektet
             CurrentPlayer.Health = Math.Max(0, CurrentPlayer.Health - dmg);
-        }
-        
-        int hp = ParseInt(Player[2], 0);
-        hp -= Math.Max(0, dmg);
-        Player[2] = Math.Max(0, hp).ToString();
     }
 
     static void UsePotion()
     {
-        int pot = ParseInt(Player[9], 0);
+        if (CurrentPlayer == null) return;
+        int pot = CurrentPlayer.Potions;
         if (pot <= 0)
         {
             Console.WriteLine("Du har inga drycker kvar.");
             return;
         }
-        int hp = ParseInt(Player[2], 0);
-        int maxhp = ParseInt(Player[3], 1);
+
+        int hp = CurrentPlayer.Health;
+        int maxhp = CurrentPlayer.MaxHealth;
 
         // Helning av spelaren
         int heal = 12;
         int newHp = Math.Min(maxhp, hp + heal);
-        Player[2] = newHp.ToString();
-        Player[9] = (pot - 1).ToString();
+       CurrentPlayer.Health = newHp;
+       CurrentPlayer.Potions--;
 
         Console.WriteLine($"Du dricker en dryck och återfår {newHp - hp} HP.");
     }
 
     static bool TryRunAway()
     {
+        if (CurrentPlayer == null) return false;
+        
         // Flyktschans baserad på karaktärsklass
-        string cls = Player[1] ?? "Warrior";
+        string cls = CurrentPlayer.ClassType;
         double chance = 0.25;
         if (cls == "Rogue") chance = 0.5;
         if (cls == "Mage") chance = 0.35;
@@ -459,73 +457,64 @@ class Program
 
     static bool IsPlayerDead()
     {
-        return ParseInt(Player[2], 0) <= 0;
+        if (CurrentPlayer == null) return true;
+            // Kollar om spelaren är död via Player-objektet
+            return CurrentPlayer.Health <= 0;
     }
 
     static void AddPlayerXp(int amount)
     {
-        
-        if (CurrentPlayer != null) // Uppdaterar spelarens XP via Player-objektet
-        {
-            CurrentPlayer.Experience += amount;
-        }
-        
-        int xp = ParseInt(Player[7], 0) + Math.Max(0, amount);
-        Player[7] = xp.ToString();
-        MaybeLevelUp();
+        if (CurrentPlayer == null) return; 
+            // Uppdaterar spelarens XP via Player-objektet
+            CurrentPlayer.Experience += Math.Max(0, amount);
+            MaybeLevelUp();
     }
 
     static void AddPlayerGold(int amount)
     {
-        if (CurrentPlayer != null) // Uppdaterar spelarens guld via Player-objektet
-        {
-            CurrentPlayer.Gold += amount;
-        }
-        
-        int gold = ParseInt(Player[6], 0) + Math.Max(0, amount);
-        Player[6] = gold.ToString();
+        if (CurrentPlayer == null) return; 
+            // Uppdaterar spelarens Guld via Player-objektet
+            CurrentPlayer.Gold += Math.Max(0, amount);
     }
 
     static void MaybeLevelUp()
     {
-        // Nivåtrösklar
-        int xp = ParseInt(Player[7], 0);
-        int lvl = ParseInt(Player[8], 1);
-        int nextThreshold = lvl == 1 ? 10 : (lvl == 2 ? 25 : (lvl == 3 ? 45 : lvl * 20));
+        if (CurrentPlayer == null) return;
+        // Hanterar level up via Player-objektet
+            int lvl = CurrentPlayer.Level;
+            int nextThreshold = lvl == 1 ? 10 : (lvl == 2 ? 25 : (lvl == 3 ? 45 : lvl * 20));
 
-        if (xp >= nextThreshold)
-        {
-            Player[8] = (lvl + 1).ToString();
-
-            // Uppgradering baserad på karaktärsklass
-            string cls = Player[1] ?? "Warrior";
-            int maxhp = ParseInt(Player[3], 1);
-            int atk = ParseInt(Player[4], 1);
-            int def = ParseInt(Player[5], 0);
-
-            switch (cls)
+            if (CurrentPlayer.Experience >= nextThreshold)
             {
-                case "Warrior":
-                    maxhp += 6; atk += 2; def += 2;
-                    break;
-                case "Mage":
-                    maxhp += 4; atk += 4; def += 1;
-                    break;
-                case "Rogue":
-                    maxhp += 5; atk += 3; def += 1;
-                    break;
-                default:
-                    maxhp += 4; atk += 3; def += 1;
-                    break;
+                CurrentPlayer.Level++;
+
+                switch (CurrentPlayer.ClassType)
+                {
+                    case "Warrior":
+                        CurrentPlayer.MaxHealth += 6;
+                        CurrentPlayer.Attack += 2;
+                        CurrentPlayer.Defense += 2;
+                        break;
+                    case "Mage":
+                        CurrentPlayer.MaxHealth += 4;
+                        CurrentPlayer.Attack += 4;
+                        CurrentPlayer.Defense += 1;
+                        break;
+                    case "Rogue":
+                        CurrentPlayer.MaxHealth += 5;
+                        CurrentPlayer.Attack += 3;
+                        CurrentPlayer.Defense += 1;
+                        break;
+                    default:
+                        CurrentPlayer.MaxHealth += 4;
+                        CurrentPlayer.Attack += 3;
+                        CurrentPlayer.Defense += 1;
+                        break;
+                }
+
+                CurrentPlayer.Health = CurrentPlayer.MaxHealth;
+                Console.WriteLine($"Du når nivå {CurrentPlayer.Level}! Värden ökade och HP återställd.");
             }
-
-            Player[3] = maxhp.ToString();
-            Player[4] = atk.ToString();
-            Player[5] = def.ToString();
-            Player[2] = maxhp.ToString(); // full heal vid level up
-
-            Console.WriteLine($"Du når nivå {lvl + 1}! Värden ökade och HP återställd.");
-        }
     }
 
     static void MaybeDropLoot(string enemyName)
@@ -650,9 +639,10 @@ class Program
 
     static bool DoRest()
     {
+        if (CurrentPlayer == null) return false;
+        
         Console.WriteLine("Du slår läger och vilar.");
-        int maxhp = ParseInt(Player[3], 1);
-        Player[2] = maxhp.ToString();
+        CurrentPlayer.Health = CurrentPlayer.MaxHealth;
         Console.WriteLine("HP återställt till max.");
         return true;
     }
@@ -661,16 +651,9 @@ class Program
 
     static void ShowStatus()
     {
-        if (CurrentPlayer != null) //// Uppdaterar spelarens hälsa via Player-objektet
-        {
-            Console.WriteLine($"[{CurrentPlayer.Name} | {CurrentPlayer.ClassType}] HP {CurrentPlayer.Health} ATK {CurrentPlayer.Attack} DEF {CurrentPlayer.Defense} Guld {CurrentPlayer.Gold}");
-        }
-        Console.WriteLine($"[{Player[0]} | {Player[1]}]  HP {Player[2]}/{Player[3]}  ATK {Player[4]}  DEF {Player[5]}  LVL {Player[8]}  XP {Player[7]}  Guld {Player[6]}  Drycker {Player[9]}");
-        var inv = (Player[10] ?? "");
-        if (!string.IsNullOrWhiteSpace(inv))
-        {
-            Console.WriteLine($"Väska: {inv}");
-        }
+        if (CurrentPlayer == null) return;
+        // Uppdaterar spelarens hälsa via Player-objektet
+        Console.WriteLine($"[{CurrentPlayer.Name} | {CurrentPlayer.ClassType}]  HP {CurrentPlayer.Health}/{CurrentPlayer.MaxHealth}  ATK {CurrentPlayer.Attack}  DEF {CurrentPlayer.Defense}  LVL {CurrentPlayer.Level}  XP {CurrentPlayer.Experience}  Guld {CurrentPlayer.Gold}  Drycker {CurrentPlayer.Potions}");
     }
     
     // ======= Hjälpmetoder =======
