@@ -15,5 +15,10 @@ public class Enemy : Character //enemy ärver från Character
         ExperienceReward = experienceReward;
         GoldReward = goldReward;
     }
+
+    public override int DealDamage()
+    {
+        return Attack;
+    }
 }
 

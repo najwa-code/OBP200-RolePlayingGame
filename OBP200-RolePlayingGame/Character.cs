@@ -15,4 +15,13 @@ public class Character
         Attack = attack;
         Defense = defense;
     }
+
+    public virtual int DealDamage()
+    {
+        return Attack;
+    }
+    public void TakeDamage(int damage)
+    {
+        Health = Math.Max(0, Health - damage);
+    }
 }
