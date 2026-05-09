@@ -10,7 +10,6 @@ class Program
     // Spelarens "databas": alla värden som strängar
     // index: 0 Name, 1 Class, 2 HP, 3 MaxHP, 4 ATK, 5 DEF, 6 GOLD, 7 XP, 8 LEVEL, 9 POTIONS, 10 INVENTORY (semicolon-sep)
     static Player? CurrentPlayer; //varaibel 
-    static string[] Player = new string[11];
 
     // Rum: [type, label]
     // types: battle, treasure, shop, rest, boss
@@ -108,19 +107,6 @@ class Program
             MaxHealth = maxhp
         };
         
-        // Fyll player-array
-        Player[0] = name;
-        Player[1] = cls;
-        Player[2] = hp.ToString();
-        Player[3] = maxhp.ToString();
-        Player[4] = atk.ToString();
-        Player[5] = def.ToString();
-        Player[6] = gold.ToString();
-        Player[7] = "0";   // XP
-        Player[8] = "1";   // LEVEL
-        Player[9] = potions.ToString();
-        Player[10] = "Wooden Sword;Cloth Armor"; // inventory som semicolon-separerad sträng
-
         // Initiera karta (linjärt äventyr)
         Rooms.Clear();
         Rooms.Add(new[] { "battle", "Skogsstig" });
@@ -268,15 +254,12 @@ class Program
         {
             return false; // avsluta äventyr
         }
-
-        if (enemy is Enemy defeatedEnemy)
-        { 
-            AddPlayerXp(defeatedEnemy.ExperienceReward);
-            AddPlayerGold(defeatedEnemy.GoldReward);
+        
+        AddPlayerXp(enemy.ExperienceReward);
+        AddPlayerGold(enemy.GoldReward);
             
-            Console.WriteLine($"Seger! +{defeatedEnemy.ExperienceReward} XP, +{defeatedEnemy.GoldReward} guld.");
-            MaybeDropLoot(defeatedEnemy.Name);
-        }
+        Console.WriteLine($"Seger! +{enemy.ExperienceReward} XP, +{enemy.GoldReward} guld.");
+        MaybeDropLoot(enemy.Name);
       
         return true;
     }
@@ -517,12 +500,10 @@ class Program
         // Enkel loot-regel
         if (Rng.NextDouble() < 0.35)
         {
-            string item = "Minor Gem";
-            if (enemyName.Contains("Urdraken")) item = "Dragon Scale";
-
-            var inv = (Player[10] ?? "").Trim();
-            if (string.IsNullOrEmpty(inv)) Player[10] = item;
-            else Player[10] = inv + ";" + item;
+            string item = enemyName.Contains("Urdraken") ? "Dragon Scale" : "Minor Gem";
+            
+            //lägger i list istället för array
+            CurrentPlayer?.Inventory.Add(item);
 
             Console.WriteLine($"Föremål hittat: {item} (lagt i din väska)");
         }
@@ -532,6 +513,8 @@ class Program
 
     static bool DoTreasure()
     {
+        if(CurrentPlayer == null) return false;
+        
         Console.WriteLine("Du hittar en gammal kista...");
         if (Rng.NextDouble() < 0.5)
         {
@@ -543,8 +526,8 @@ class Program
         {
             var items = new[] { "Iron Dagger", "Oak Staff", "Leather Vest", "Healing Herb" };
             string found = items[Rng.Next(items.Length)];
-            var inv = (Player[10] ?? "").Trim();
-            Player[10] = string.IsNullOrEmpty(inv) ? found : (inv + ";" + found);
+            
+            CurrentPlayer?.Inventory.Add(found);    
             Console.WriteLine($"Du plockar upp: {found}");
         }
         return true;
@@ -557,7 +540,7 @@ class Program
         while (true)
         {
             //värden från CurrentPlayer
-            Console.WriteLine($"Guld: {CurrentPlayer.Gold} | Drycker {CurrentPlayer.Potions}");
+            Console.WriteLine($"Guld: {CurrentPlayer.Gold} | Drycker: {CurrentPlayer.Potions}");
             Console.WriteLine("1) Köp dryck (10 guld)");
             Console.WriteLine("2) Köp vapen (+2 ATK) (25 guld)");
             Console.WriteLine("3) Köp rustning (+2 DEF) (25 guld)");
@@ -615,23 +598,20 @@ class Program
     
     static void SellMinorGems()
     {
-        var inv = (Player[10] ?? "");
-        if (string.IsNullOrWhiteSpace(inv))
+        if (CurrentPlayer == null || CurrentPlayer.Inventory.Count == 0)
         {
             Console.WriteLine("Du har inga föremål att sälja.");
             return;
         }
 
-        var items = inv.Split(';').Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-        int count = items.Count(x => x == "Minor Gem");
+        int count = CurrentPlayer.Inventory.Count(x => x == "Minor Gem");
         if (count == 0)
         {
             Console.WriteLine("Inga 'Minor Gem' i väskan.");
             return;
         }
 
-        items = items.Where(x => x != "Minor Gem").ToList();
-        Player[10] = items.Count == 0 ? "" : string.Join(";", items);
+        CurrentPlayer.Inventory.RemoveAll(x => x == "Minor Gem");
 
         AddPlayerGold(count * 5);
         Console.WriteLine($"Du säljer {count} st Minor Gem för {count * 5} guld.");
@@ -654,6 +634,10 @@ class Program
         if (CurrentPlayer == null) return;
         // Uppdaterar spelarens hälsa via Player-objektet
         Console.WriteLine($"[{CurrentPlayer.Name} | {CurrentPlayer.ClassType}]  HP {CurrentPlayer.Health}/{CurrentPlayer.MaxHealth}  ATK {CurrentPlayer.Attack}  DEF {CurrentPlayer.Defense}  LVL {CurrentPlayer.Level}  XP {CurrentPlayer.Experience}  Guld {CurrentPlayer.Gold}  Drycker {CurrentPlayer.Potions}");
+        if (CurrentPlayer.Inventory.Count > 0)
+        {
+            Console.WriteLine($"Väska: {string.Join(" , ", CurrentPlayer.Inventory)}");
+        }
     }
     
     // ======= Hjälpmetoder =======
@@ -665,7 +649,7 @@ class Program
             int value = Convert.ToInt32(s);
             return value;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             return fallback;
         }
