@@ -1,5 +1,4 @@
-﻿
-namespace OBP200_RolePlayingGame;
+﻿namespace OBP200_RolePlayingGame;
 
 public class Enemy : Character //enemy ärver från Character 
 {

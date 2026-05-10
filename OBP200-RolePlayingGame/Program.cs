@@ -396,7 +396,7 @@ class Program
     {
         if (CurrentPlayer == null) return; 
             //Uppdaterar spelarens hälsa via Player-objektet
-            CurrentPlayer.Health = Math.Max(0, CurrentPlayer.Health - dmg);
+            CurrentPlayer.TakeDamage(dmg);
     }
 
     static void UsePotion()
@@ -415,7 +415,7 @@ class Program
         // Helning av spelaren
         int heal = 12;
         int newHp = Math.Min(maxhp, hp + heal);
-       CurrentPlayer.Health = newHp;
+        CurrentPlayer.Health = newHp;
        CurrentPlayer.Potions--;
 
         Console.WriteLine($"Du dricker en dryck och återfår {newHp - hp} HP.");
@@ -443,8 +443,7 @@ class Program
     static void AddPlayerXp(int amount)
     {
         if (CurrentPlayer == null) return; 
-            // Uppdaterar spelarens XP via Player-objektet
-            CurrentPlayer.Experience += Math.Max(0, amount);
+            CurrentPlayer.Experience += amount;
             MaybeLevelUp();
     }
 

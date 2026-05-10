@@ -1,5 +1,4 @@
-﻿
-namespace OBP200_RolePlayingGame;
+﻿namespace OBP200_RolePlayingGame;
 public class Player : Character //här ärver Player från Character 
 
 {
@@ -20,5 +19,20 @@ public class Player : Character //här ärver Player från Character
         // start föremål
         Inventory.Add("Träsvärd");
         Inventory.Add("TyggutRustning");
+    }
+
+    public void LevelUp()
+    {
+        Level++;
+        switch (ClassType)
+        {
+            case "Warrior":
+                MaxHealth += 6;
+                Attack += 2;
+                Defense += 2;
+                break;
+        }
+
+        Health = MaxHealth;
     }
 }
